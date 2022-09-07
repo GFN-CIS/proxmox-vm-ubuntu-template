@@ -5,6 +5,7 @@ The role to set up the Ubuntu template on Proxmox VM.  It uses HashiCorp's packe
 The builder uses aut-generated username and password for Packer's operation. 
 The username and password are stored in the tmp/packer* on the Ansible Machine. 
 After the template is built, you must configure the CloudInit through the proxmox in order to get access to it.
+
 Prior to build, it checks if vm with the same name or id already exists and skips build if it does. 
 The build takes about 10 minutes. 
 
