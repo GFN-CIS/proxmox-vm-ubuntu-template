@@ -1,10 +1,12 @@
-# Proxmox Ubuntu VM Template
+# Proxmox Ubuntu VM Template Role
 
 The role to set up the Ubuntu template on Proxmox VM.  It uses HashiCorp's packer for building the template.
 
 The builder uses aut-generated username and password for Packer's operation. 
 The username and password are stored in the tmp/packer* on the Ansible Machine. 
 After the template is built, you must configure the CloudInit through the proxmox in order to get access to it.
+Prior to build, it checks if vm with the same name or id already exists and skips build if it does. 
+The build takes about 10 minutes. 
 
 Basic usage: 
 1. Create template
@@ -38,3 +40,15 @@ Role optional variables (and their defaults):
     # It must be pre-loaded to the proxmox host 
     template_iso_file: "local:iso/ubuntu-22.04.1-live-server-amd64.iso"
  
+Example usage: 
+
+    hosts: pve
+    roles:
+      - role: proxmox-vm-ubuntu-template
+        vars:
+            storage_pool: "pool1"
+            storage_pool_type: "zfspool"
+            template_network_adapter:
+              model: virtio
+              bridge: vmbr1
+              vlan_tag: '99'
