@@ -1,0 +1,56 @@
+
+- pvesh:
+    command: ls
+    path: /access/users/
+  register: result
+- name: create user {{proxmox_api_user}}
+  pvesh:
+    command: create
+    path: /access/users/
+    options:
+      userid: "{{proxmox_api_user}}"
+      password: "{{proxmox_api_password}}"
+      email: "{{proxmox_api_email}}"
+      comment: "Packer user"
+  when: result.result|selectattr('name','equalto',proxmox_api_user) ==[]
+- name: Check tokens
+  pvesh:
+    command: ls
+    path: "/access/users/{{proxmox_api_user}}/token/"
+  register: result
+- name: Delete {{proxmox_api_token_name}} token for {{proxmox_api_user}}
+  pvesh:
+    command: delete
+    path: "/access/users/{{proxmox_api_user}}/token/{{proxmox_api_token_name}}/"
+  when: result.result|selectattr('name','equalto',proxmox_api_token_name) != []
+- name: Create API Token
+  pvesh:
+    command: create
+    path: "/access/users/{{proxmox_api_user}}/token/{{proxmox_api_token_name}}/"
+  register:
+    result
+  retries: 5
+  until: result is success
+- set_fact:
+    proxmox_api_token_id: "{{result.result['full-tokenid']}}"
+    proxmox_api_token: "{{result.result['value']}}"
+
+- name: Set ACL for user
+  pvesh:
+    command: set
+    path: "/access/acl/"
+    options:
+      path: "/"
+      roles: "Administrator"
+      users: "{{proxmox_api_user}}"
+- name: Set ACL for token
+  pvesh:
+    command: set
+    path: "/access/acl/"
+    options:
+      path: "/"
+      roles: "Administrator"
+      tokens: "{{proxmox_api_token_id}}"
+  register: result
+  retries: 5
+  until: result is success

@@ -1,0 +1,43 @@
+- set_fact:
+    proxmox_api_user: "packer{{ lookup('ansible.builtin.password', '/dev/null length=16 chars=ascii_lowercase') }}@pve"
+    proxmox_api_password: "{{ lookup('ansible.builtin.password', '/dev/null length=16 chars=ascii_lowercase') }}"
+    proxmox_api_email: 'packer@nowhere'
+    proxmox_api_token_name: "default"
+- name: Prepare packer token
+  include_tasks: prepare_pve.yml
+
+- set_fact:
+    conf: |
+      {% set _dummy = packer_config.builders[0].update({'token':proxmox_api_token}) %}
+      {% set _dummy = packer_config.builders[0].update({'username':proxmox_api_token_id}) %}
+      {% set _dummy = packer_config.builders[0].update({'network_adapters':[template_network_adapter]}) %}
+      {{packer_config}}
+- copy:
+    content: "{{conf | to_nice_json}}"
+    dest: "{{ packer_dir.path }}/packer.json.tmp"
+- shell:
+    cmd: |
+      cat {{ packer_dir.path }}/packer.json.tmp |
+      python3 -c 'import html, sys; [print(html.unescape(l), end="") for l in sys.stdin]'
+  register: result
+- copy: content="{{result.stdout}}" dest="{{ packer_dir.path }}/packer.json"
+- copy:
+    src: "templates/server-template.yml"
+    dest: "{{ packer_dir.path }}/server-template.yml"
+- file:
+    path: "{{ packer_dir.path }}/http"
+    state: directory
+- copy:
+    src: "templates/http/meta-data"
+    dest: "{{ packer_dir.path }}/http/meta-data"
+- template:
+    src: "templates/http/user-data"
+    dest: "{{ packer_dir.path }}/http/user-data"
+- shell:
+    chdir: "{{ packer_dir.path }}"
+    cmd: |
+      packer build -on-error=abort {{ packer_dir.path }}/packer.json
+- name: Delete packer user
+  pvesh:
+    command: delete
+    path: "/access/users/{{proxmox_api_user}}"

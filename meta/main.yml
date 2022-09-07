@@ -1,0 +1,9 @@
+galaxy_info:
+  author: alex mk
+  description: Ansible role for building ubuntu template on proxmox
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+dependencies:
+

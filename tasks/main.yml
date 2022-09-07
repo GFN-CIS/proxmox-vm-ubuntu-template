@@ -1,0 +1,37 @@
+- ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /etc/apt/trusted.gpg.d/hashicorp.asc
+
+- ansible.builtin.apt_repository:
+    repo: "deb [arch={{ 'amd64' if ansible_architecture == 'x86_64' else ansible_architecture }} \
+     signed-by=/etc/apt/trusted.gpg.d/hashicorp.asc] https://apt.releases.hashicorp.com \
+     {{ ansible_distribution_release }} main"
+    state: present
+- apt:
+    name: [packer, python3]
+- pvesh:
+    command: get
+    path: "/nodes/{{ansible_facts.hostname}}/qemu"
+  register: vms
+
+
+- tempfile:
+    state: directory
+  register: packer_dir
+
+- name: Build packer template if not exists {{template_vm_name}} with id {{template_vm_id}}
+  include_tasks: build_template.yml
+  when: not (vms.result|selectattr('name','equalto',template_vm_name) or  vms.result|selectattr('vmid','equalto',template_vm_id))
+
+- file:
+    path: "{{ packer_dir.path }}"
+    state: absent
+- file:
+    path: "inventory_dir+'/tmp/packer_'+inventory_hostname+'_tmp_packer.user"
+    state: absent
+  delegate_to: localhost
+
+- file:
+    path: "inventory_dir+'/tmp/packer_'+inventory_hostname+'_tmp_packer.pass"
+    state: absent
+  delegate_to: localhost

@@ -1,0 +1,57 @@
+proxmox_url: "https://localhost:8006/api2/json"
+# Must be specified
+storage_pool:
+# Must be specified
+storage_pool_type:
+template_username: "{{ lookup('ansible.builtin.password', inventory_dir+'/tmp/packer_'+inventory_hostname+'_tmp_packer.user length=32 chars=ascii_lowercase') }}"
+template_password: "{{ lookup('ansible.builtin.password', inventory_dir+'/tmp/packer_'+inventory_hostname+'_tmp_packer.pass length=32 chars=ascii_lowercase') }}"
+template_vm_name: "ubuntu-template"
+template_vm_id: "20000"
+template_iso_file: "local:iso/ubuntu-22.04.1-live-server-amd64.iso"
+# Must be configured
+template_network_adapter:
+  model:
+  bridge:
+  vlan_tag:
+packer_config:
+  description: Ubuntu Proxmox Template
+  variables: { }
+  provisioners:
+    - type: ansible
+      playbook_file: ./server-template.yml
+      user: "{{template_username}}"
+      extra_arguments:
+        - "-vvvv"
+      ansible_env_vars:
+        - ANSIBLE_SSH_ARGS='-o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa'
+  builders:
+    - type: proxmox
+      proxmox_url: "{{proxmox_url}}"
+      insecure_skip_tls_verify: true
+      vm_name: "{{template_vm_name}}"
+      vm_id: "{{template_vm_id}}"
+      memory: "1024"
+      cores: '2'
+      os: l26
+      http_directory: http
+      node: localhost
+      cloud_init: true
+      cloud_init_storage_pool: "{{storage_pool}}"
+      disks:
+        - type: scsi
+          disk_size: 8G
+          storage_pool: "{{storage_pool}}"
+          storage_pool_type: "{{storage_pool_type}}"
+          format: raw
+      ssh_username: "{{template_username}}"
+      ssh_password: "{{template_password}}"
+      ssh_timeout: 15m
+      iso_file: "{{template_iso_file}}"
+      unmount_iso: true
+      boot_wait: 5s
+      boot_command:
+        - c<wait>
+        - 'linux /casper/vmlinuz --- autoinstall ds="nocloud-net;seedfrom=http://&lbrace;&lbrace; .HTTPIP }}:&lbrace;&lbrace; .HTTPPort }}/" '
+        - "<enter><wait5>"
+        - initrd /casper/initrd<enter><wait5>
+        - boot<enter>
