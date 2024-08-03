@@ -5,22 +5,23 @@
     proxmox_api_token_name: "default"
 - name: Prepare packer token
   include_tasks: prepare_pve.yml
-
 - set_fact:
-    conf: |
-      {% set _dummy = packer_config.builders[0].update({'token':proxmox_api_token}) %}
-      {% set _dummy = packer_config.builders[0].update({'username':proxmox_api_token_id}) %}
-      {% set _dummy = packer_config.builders[0].update({'network_adapters':[template_network_adapter]}) %}
-      {{packer_config}}
+    cloud_init_storage_pool: "{{build.disks[0].storage_pool}}"
+    template_username: "{{ lookup('ansible.builtin.password', '/dev/null length=32 chars=ascii_lowercase') }}"
+    template_password: "{{ lookup('ansible.builtin.password', '/dev/null length=32 chars=ascii_lowercase') }}"
+- set_fact:
+    builder_config_combined: "{{builder_config | combine (build, recursive=true) }}"
+
+
 - copy:
-    content: "{{conf | to_nice_json}}"
-    dest: "{{ packer_dir.path }}/packer.json.tmp"
-- shell:
-    cmd: |
-      cat {{ packer_dir.path }}/packer.json.tmp |
-      python3 -c 'import html, sys; [print(html.unescape(l), end="") for l in sys.stdin]'
-  register: result
-- copy: content="{{result.stdout}}" dest="{{ packer_dir.path }}/packer.json"
+    content: "{{packer_config | to_nice_json}}"
+    dest: "{{ packer_dir.path }}/packer.json"
+#- shell:
+#    cmd: |
+#      cat {{ packer_dir.path }}/packer.json.tmp |
+#      python3 -c 'import html, sys; [print(html.unescape(l), end="") for l in sys.stdin]'
+#  register: result
+#- copy: content="{{result.stdout}}" dest="{{ packer_dir.path }}/packer.json"
 - copy:
     src: "templates/server-template.yml"
     dest: "{{ packer_dir.path }}/server-template.yml"
@@ -33,10 +34,22 @@
 - template:
     src: "templates/http/user-data"
     dest: "{{ packer_dir.path }}/http/user-data"
-- shell:
+- name: "Install packer plugins"
+  shell:
+    chdir: "{{ packer_dir.path }}"
+    cmd: "packer plugins install {{ item }}"
+  loop:
+    - github.com/hashicorp/proxmox
+    - github.com/hashicorp/ansible
+
+
+- command:
     chdir: "{{ packer_dir.path }}"
     cmd: |
       packer build -on-error=abort {{ packer_dir.path }}/packer.json
+  environment:
+    PACKER_LOG: 1
+    PACKER_LOG_PATH: "{{ packer_dir.path }}/packer.log"
 - name: Delete packer user
   pvesh:
     command: delete

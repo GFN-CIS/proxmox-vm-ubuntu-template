@@ -1,9 +1,15 @@
 - name: 'Provision Image'
-  hosts: default
+  hosts: localhost
   become: true
   tasks:
-    - name: Remove Packer's cloud init
-      file:
-        path: /etc/cloud/cloud.cfg.d/99-installer.cfg
-        state: absent
-
+    - shell:
+        cmd: apt -y upgrade
+    - shell:
+        cmd: cloud-init clean --machine-id
+    - pause:
+        seconds: 30
+#    - name: Remove Packer's cloud init
+#      file:
+#        path: /etc/cloud/cloud.cfg.d/99-installer.cfg
+#        state: absent
+#

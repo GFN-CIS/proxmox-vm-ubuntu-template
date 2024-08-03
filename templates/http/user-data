@@ -1,14 +1,16 @@
 #cloud-config
 autoinstall:
+  updates: all
   version: 1
   locale: en_US
   keyboard:
-    layout: en
+    layout: us
   ssh:
     install-server: true
     allow-pw: true
   packages:
     - qemu-guest-agent
+    - ansible
   storage:
     layout:
       name: direct
@@ -19,7 +21,7 @@ autoinstall:
     timezone: Europe/Moscow
     users:
       - name: "{{template_username}}"
-        passwd: "{{ template_password | password_hash('sha512') }}"
+        passwd: "{{ template_password  | password_hash('sha512') }}"
         groups: [adm, cdrom, dip, plugdev, lxd, sudo]
         lock-passwd: false
         sudo: ALL=(ALL) NOPASSWD:ALL

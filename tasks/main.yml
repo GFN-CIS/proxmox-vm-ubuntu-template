@@ -8,7 +8,7 @@
      {{ ansible_distribution_release }} main"
     state: present
 - apt:
-    name: [packer, python3]
+    name: [packer, python3, ansible]
 - pvesh:
     command: get
     path: "/nodes/{{ansible_facts.hostname}}/qemu"
@@ -26,12 +26,3 @@
 - file:
     path: "{{ packer_dir.path }}"
     state: absent
-- file:
-    path: "inventory_dir+'/tmp/packer_'+inventory_hostname+'_tmp_packer.user"
-    state: absent
-  delegate_to: localhost
-
-- file:
-    path: "inventory_dir+'/tmp/packer_'+inventory_hostname+'_tmp_packer.pass"
-    state: absent
-  delegate_to: localhost
